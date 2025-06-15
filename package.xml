@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>fusion_cam_lidar</name>
+  <version>0.1.0</version>
+  <description>Projection of LiDAR point clouds into camera frames using calibration and sensor fusion.</description>
+
+  <maintainer email="wimmer1luk@gmail.com">Lukas Wimmer</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Runtime & Build Dependencies -->
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>message_filters</depend>
+  <depend>tf2_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>eigen</depend>
+  <depend>yaml-cpp</depend>
+  <depend>opencv4</depend>
+
+  <!-- Testing -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

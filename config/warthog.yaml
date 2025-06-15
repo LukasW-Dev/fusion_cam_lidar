@@ -1,0 +1,17 @@
+fusion_node:
+  ros__parameters:
+    lidar:
+      lidar_topic: /livox/lidar_192_168_100_116
+      colored_cloud_topic: /rgb_cloud
+
+    camera:
+      image_topic: /segmentation/image
+      confidence_topic: /segmentation/confidence
+      projected_topic: /projected_image
+      horizontal_fov_deg: 120.0
+
+    general:
+      camera_intrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/int_warthog.yaml
+      camera_extrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/ext_warthog_livox.yaml
+      slop: 0.1
+      max_queue_size: 10
