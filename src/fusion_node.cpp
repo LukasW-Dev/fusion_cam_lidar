@@ -28,6 +28,9 @@ public:
     this->declare_parameter<std::string>("camera.image_topic", "/image");
     this->declare_parameter<std::string>("camera.confidence_topic", "/confidence");
     this->declare_parameter<std::string>("lidar.lidar_topic", "/points_raw");
+    this->declare_parameter<std::string>("lidar.lidar_topic2", "None");
+    this->declare_parameter<std::string>("lidar.lidar_frame", "");
+    this->declare_parameter<std::string>("lidar.lidar_frame2", "");
     this->declare_parameter<std::string>("lidar.colored_cloud_topic", "/colored_cloud");
     this->declare_parameter<double>("camera.horizontal_fov_deg", 120.0);
     this->declare_parameter<bool>("visualize", true);
@@ -37,6 +40,9 @@ public:
     std::string image_topic = this->get_parameter("camera.image_topic").as_string();
     std::string confidence_topic = this->get_parameter("camera.confidence_topic").as_string();
     std::string lidar_topic = this->get_parameter("lidar.lidar_topic").as_string();
+    std::string lidar_topic2 = this->get_parameter("lidar.lidar_topic2").as_string();
+    lidar_frame_ = this->get_parameter("lidar.lidar_frame").as_string();
+    lidar_frame2_ = this->get_parameter("lidar.lidar_frame2").as_string();
     std::string cloud_topic = this->get_parameter("lidar.colored_cloud_topic").as_string();
     horizontal_fov_deg_ = this->get_parameter("camera.horizontal_fov_deg").as_double();
     horizontal_fov_rad_ = horizontal_fov_deg_ * M_PI / 180.0;
@@ -69,10 +75,22 @@ public:
     confidence_sub_.subscribe(this, confidence_topic);
     lidar_sub_.subscribe(this, lidar_topic, qos_profile.get_rmw_qos_profile());
 
+    if(!lidar_topic2.empty())
+    {
+      lidar_sub2_.subscribe(this, lidar_topic2, qos_profile.get_rmw_qos_profile());
+      sync2_.reset(new message_filters::Synchronizer<SyncPolicy>(SyncPolicy(10), image_sub_, confidence_sub_, lidar_sub2_));
+      sync2_->registerCallback(std::bind(&LidarCameraProjectionNode::syncCallback, this,
+                                      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    }
+    else{
+      is_extrinsic_loaded_2 = true;
+    }
+
     sync_.reset(new message_filters::Synchronizer<SyncPolicy>(SyncPolicy(10), image_sub_, confidence_sub_, lidar_sub_));
   
     sync_->registerCallback(std::bind(&LidarCameraProjectionNode::syncCallback, this,
                                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    
   }
 
 private:
@@ -86,8 +104,10 @@ private:
   message_filters::Subscriber<sensor_msgs::msg::Image> image_sub_;
   message_filters::Subscriber<sensor_msgs::msg::Image> confidence_sub_;
   message_filters::Subscriber<sensor_msgs::msg::PointCloud2> lidar_sub_;
+  message_filters::Subscriber<sensor_msgs::msg::PointCloud2> lidar_sub2_;
 
   std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
+  std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync2_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
@@ -95,7 +115,13 @@ private:
   cv::Mat camera_matrix_;
   cv::Mat dist_coeffs_;
   Eigen::Matrix4d T_lidar_to_cam_;
+  Eigen::Matrix4d T_lidar2_to_cam_;
   bool is_extrinsic_loaded_ = false;
+  bool is_extrinsic_loaded_2 = false;
+
+
+  std::string lidar_frame_;
+  std::string lidar_frame2_;
 
   bool visualize_;
 
@@ -142,11 +168,15 @@ private:
                   const sensor_msgs::msg::Image::ConstSharedPtr& confidence_msg,
                   const sensor_msgs::msg::PointCloud2::ConstSharedPtr& lidar_msg) {
 
-    if (!is_extrinsic_loaded_) {
+    int lidar = lidar_frame_ == lidar_msg->header.frame_id ? 1 : 2;
+
+    bool &loaded = lidar == 1 ? is_extrinsic_loaded_ : is_extrinsic_loaded_2;
+
+    if (!loaded) {
       RCLCPP_WARN(this->get_logger(), "Extrinsic file not provided. Attempting to lookup transform via TF.");
       try {
         geometry_msgs::msg::TransformStamped tf =
-          tf_buffer_.lookupTransform("front_camera_rgb_camera_optical_frame", "front_livox_link", tf2::TimePointZero);
+          tf_buffer_.lookupTransform(image_msg->header.frame_id, lidar_msg->header.frame_id, tf2::TimePointZero);
 
         Eigen::Translation3d t(tf.transform.translation.x,
                               tf.transform.translation.y,
@@ -156,13 +186,23 @@ private:
                             tf.transform.rotation.y,
                             tf.transform.rotation.z);
 
-        T_lidar_to_cam_ = (t * q).matrix();
-        is_extrinsic_loaded_ = true;
+        if(lidar == 1)
+        {
+          T_lidar_to_cam_ = (t * q).matrix();
+          is_extrinsic_loaded_ = true;
+        }
+        else
+        {
+          T_lidar2_to_cam_ = (t * q).matrix();
+          is_extrinsic_loaded_2 = true;
+        }
       } catch (const std::exception& e) {
         RCLCPP_ERROR(this->get_logger(), "Failed to lookup transform: %s", e.what());
         return;
       }
     }
+
+    auto T_lidar_to_cam = lidar == 1 ? T_lidar_to_cam_ : T_lidar2_to_cam_;
 
     // get the camera image and confidence map
     cv::Mat image = cv_bridge::toCvCopy(image_msg, "bgr8")->image;
@@ -180,7 +220,7 @@ private:
     std::vector<cv::Point3f> cam_points;
     for (const auto& pt : lidar_points) {
       Eigen::Vector4d pt_h(pt.x, pt.y, pt.z, 1.0);
-      Eigen::Vector4d pt_cam = T_lidar_to_cam_ * pt_h;
+      Eigen::Vector4d pt_cam = T_lidar_to_cam * pt_h;
 
       // Skip points behind the camera
       if (pt_cam.z() <= 0) continue;  

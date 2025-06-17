@@ -2,6 +2,9 @@ fusion_node:
   ros__parameters:
     lidar:
       lidar_topic: /left_laser/pandar
+      lidar_topic2: /right_laser/pandar
+      lidar_frame: left_laser_mount
+      lidar_frame2: right_laser_mount
       colored_cloud_topic: /rgb_cloud
 
     camera:
@@ -12,6 +15,6 @@ fusion_node:
 
     general:
       camera_intrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/int_mercator.yaml
-      camera_extrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/ext_mercator.yaml
+      #camera_extrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/ext_mercator.yaml
       slop: 0.1
       max_queue_size: 10
