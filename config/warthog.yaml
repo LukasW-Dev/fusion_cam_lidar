@@ -1,7 +1,10 @@
 fusion_node:
   ros__parameters:
     lidar:
-      lidar_topic: "/front_os/points"
+      lidar_topic: /front_os/points
+      lidar_topic2: None
+      lidar_frame: front_os_lidar
+      lidar_frame2: None
       colored_cloud_topic: /rgb_cloud
 
     camera:
@@ -11,7 +14,7 @@ fusion_node:
       horizontal_fov_deg: 120.0
 
     general:
-      camera_intrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/int_warthog.yaml
-      camera_extrinsic_calibration: /home/lukas/ros2_ws/src/fusion_cam_lidar/param/ext_warthog.yaml
+      camera_intrinsic_calibration: /home/robolab/semantic_ws/src/fusion_cam_lidar/param/int_warthog.yaml
+      //camera_extrinsic_calibration: /home/robolab/semantic_ws/src/fusion_cam_lidar/param/ext_warthog.yaml
       slop: 0.1
       max_queue_size: 10

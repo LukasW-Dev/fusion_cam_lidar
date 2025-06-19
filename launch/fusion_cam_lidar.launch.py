@@ -4,7 +4,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    config_path = os.path.expanduser('~/ros2_ws/src/fusion_cam_lidar/config/warthog.yaml')
+    config_path = os.path.expanduser('~/semantic_ws/src/fusion_cam_lidar/config/warthog.yaml')
 
     return LaunchDescription([
         Node(
